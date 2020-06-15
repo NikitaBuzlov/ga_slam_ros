@@ -46,25 +46,54 @@ GaSlam::GaSlam(ros::NodeHandle& Node_handle)
           poseInitialized_(false),
           nh(Node_handle){
 
-    double traversedDistanceThreshold = 10.;
-    double minSlopeThreshold = 0.5;
+
     double slopeSumThresholdMultiplier = 10.;
     double matchAcceptanceThreshold = 0.9;
     bool matchYaw = true;
     double matchYawRange = 20 * M_PI / 180;
     double matchYawStep = M_PI / 180;
-    double globalMapLength = 100.;
-    double globalMapResolution = 1.;
-    priv_nh.param("traversedDistanceThreshold",traversedDistanceThreshold,10.0);
-    priv_nh.param("traversedDistanceThreshold",minSlopeThreshold,0.5);
-    priv_nh.param("traversedDistanceThreshold",slopeSumThresholdMultiplier,10.0);
-    priv_nh.param("traversedDistanceThreshold",matchAcceptanceThreshold,10.0);
+    double globalMapLength = 300.;
+    double globalMapResolution = 0.2;
+    double mapLength;
+    double mapResolution;
+    double minElevation,maxElevation;
+    double voxelSize;
+    double depthSigmaCoeff1,depthSigmaCoeff2,depthSigmaCoeff3;
+    int numParticles,resampleFrequency;
+    double initialSigmaX,initialSigmaY,initialSigmaZ,initialSigmaYaw;
+    double predictSigmaX,predictSigmaY,predictSigmaZ,predictSigmaYaw;
+    priv_nh.param("mapLength",mapLength,100.0);
+    priv_nh.param("mapResolution",mapResolution,0.2);
+    priv_nh.param("minElevation",minElevation,-2.);
+    priv_nh.param("maxElevation",maxElevation,2.);
+    priv_nh.param("voxelSize",voxelSize,1.);
+    priv_nh.param("depthSigmaCoeff1",depthSigmaCoeff1,1.);
+    priv_nh.param("depthSigmaCoeff1",depthSigmaCoeff2,1.);
+    priv_nh.param("depthSigmaCoeff1",depthSigmaCoeff3,1.);
+    priv_nh.param("numParticles",numParticles,1);
+    priv_nh.param("resampleFrequency",resampleFrequency,1);
+    priv_nh.param("initialSigmaX",initialSigmaX,0.);
+    priv_nh.param("initialSigmaY",initialSigmaY,0.);
+    priv_nh.param("initialSigmaZ",initialSigmaZ,0.);
+    priv_nh.param("initialSigmaZ",initialSigmaYaw,0.);
+    priv_nh.param("initialSigmaX",predictSigmaX,0.);
+    priv_nh.param("initialSigmaY",predictSigmaY,10.);
+    priv_nh.param("initialSigmaZ",predictSigmaZ,10.);
+    priv_nh.param("initialSigmaZ",predictSigmaYaw,0.5);
+    priv_nh.param("slopeSumThresholdMultiplier",slopeSumThresholdMultiplier,10.0);
+    priv_nh.param("matchAcceptanceThreshold",matchAcceptanceThreshold,10.0);
     priv_nh.param("traversedDistanceThreshold",matchYaw,true);
     priv_nh.param("traversedDistanceThreshold",matchYawRange,10.0);
     priv_nh.param("traversedDistanceThreshold",matchYawStep, M_PI / 180);
+    priv_nh.param("globalMapLength",globalMapLength, 300.0);
     priv_nh.param("traversedDistanceThreshold",globalMapResolution,1.0);
-    configure(1., 1., 1., 1., 1., 0., 0., 1., 1, 1, 0., 0., 0., 0.,
-                    0., 0., traversedDistanceThreshold, minSlopeThreshold,
+
+
+    configure(mapLength, mapResolution, minElevation,maxElevation, voxelSize,
+              depthSigmaCoeff1, depthSigmaCoeff2, depthSigmaCoeff3,
+              numParticles, resampleFrequency,
+              initialSigmaX, initialSigmaY, initialSigmaZ, initialSigmaYaw,
+                    predictSigmaX, predictSigmaY, predictSigmaZ, predictSigmaYaw,
                     slopeSumThresholdMultiplier, matchAcceptanceThreshold,
                     matchYaw, matchYawRange, matchYawStep,
                     globalMapLength, globalMapResolution);
@@ -75,6 +104,7 @@ GaSlam::GaSlam(ros::NodeHandle& Node_handle)
     cloudSub = nh.subscribe("velodyne_points",10,&GaSlam::cloudCallback,this);
     odoSub = nh.subscribe("/odometry/filtered_map",10,&GaSlam::poseCallback,this);
     imuSub = nh.subscribe("/imu_rob_loc",10,&GaSlam::imuCallback,this);
+    pubPose = nh.advertise<nav_msgs::Odometry>("/pose_ga",10);
 }
 void GaSlam::configure(
         double mapLength, double mapResolution,
@@ -158,18 +188,29 @@ void GaSlam::cloudCallback(const sensor_msgs::PointCloud2Ptr &cloud)
             getPose(), mapToSensorTF, mapParameters, voxelSize_,
             depthSigmaCoeff1_, depthSigmaCoeff2_, depthSigmaCoeff3_);
 
-    ROS_DEBUG_STREAM("process cloud is finished" << processedCloud->size());
+    ROS_DEBUG_STREAM("process cloud is finished" << processedCloud->size() << " cloud variance " << cloudVariances.size());
     dataRegistration_.updateMap(processedCloud, cloudVariances);
+
     ROS_DEBUG_STREAM("map_update is finished" << processedCloud->size());
 
     if (isFutureReady(scanToMapMatchingFuture_))
         scanToMapMatchingFuture_ = std::async(std::launch::async,
                 &GaSlam::matchLocalMapToRawCloud, this, processedCloud);
 
-    /*if (isFutureReady(mapToMapMatchingFuture_))
+    if (isFutureReady(mapToMapMatchingFuture_))
         mapToMapMatchingFuture_ = std::async(std::launch::async,
                 &GaSlam::matchLocalMapToGlobalMap, this);
-*/}
+
+
+ ;
+tf::Transform transform;
+tf::transformEigenToTF(poseEstimation_.getPose(),transform);
+nav_msgs::Odometry odomsg;
+tf::poseTFToMsg(transform,odomsg.pose.pose);
+odomsg.header.frame_id = "/map";
+odomsg.header.stamp = ros::Time().now();
+pubPose.publish(odomsg);
+}
 
 void GaSlam::createGlobalMap(
             const Cloud::ConstPtr& globalCloud,
@@ -182,7 +223,7 @@ void GaSlam::matchLocalMapToRawCloud(const Cloud::ConstPtr& rawCloud) {
 
     std::unique_lock<std::mutex> guard(getLocalMapMutex());
     const auto& map = getLocalMap();
-    ROS_DEBUG_STREAM("convert map");
+    ROS_DEBUG_STREAM("convert map" << map.getParameters().size);
     CloudProcessing::convertMapToCloud(map, mapCloud);
     guard.unlock();
     ROS_DEBUG_STREAM(rawCloud->size() << " size raw data " << mapCloud->size());

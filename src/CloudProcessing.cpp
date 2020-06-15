@@ -166,7 +166,7 @@ double CloudProcessing::matchClouds(
         const Cloud::ConstPtr& cloud1,
         const Cloud::ConstPtr& cloud2) {
     pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-    icp.setMaximumIterations(1);
+   // icp.setMaximumIterations(1);
     icp.setInputSource(cloud1);
     icp.setInputTarget(cloud2);
 

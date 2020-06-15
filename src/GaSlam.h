@@ -68,6 +68,7 @@ class GaSlam {
 
     GaSlam(ros::NodeHandle& Node_handle);
 
+
     /// Delete the default copy/move constructors and operators
     GaSlam(const GaSlam&) = delete;
     GaSlam& operator=(const GaSlam&) = delete;
@@ -230,6 +231,7 @@ class GaSlam {
     ros::Subscriber odoSub;
     ros::Subscriber imuSub;
 
+    ros::Publisher pubPose;
     /// nodehandle
     ros::NodeHandle priv_nh;
     ros::NodeHandle nh;

@@ -6,8 +6,33 @@
 
      <node name="ga_slam" pkg="ga_slam"
                 type="ga_slam_node" output="screen" >
-              
+                <param name="mapLength" value="50.0"/>
+                <param name="mapResolution" value="0.2"/>
 
+
+                <param name="minElevation" value="-2."/>
+                <param name="maxElevation" value="2."/>
+                <param name="voxelSize" value="1"/>;
+                <param name="depthSigmaCoeff1" value="1"/>;
+                <param name="depthSigmaCoeff1" value="1"/>;
+                <param name="depthSigmaCoeff1" value="1"/>;
+                <param name="numParticles" value="20"/>
+                <param name="resampleFrequency" value="1"/>
+                <param name="initialSigmaX" value="0"/>;
+                <param name="initialSigmaY" value="0"/>;
+                <param name="initialSigmaZ" value="0"/>;
+                <param name="initialSigmaZ" value="0"/>;
+                <param name="initialSigmaX" value="0"/>;
+                <param name="initialSigmaY" value="10"/>;
+                <param name="initialSigmaZ" value="10"/>;
+                <param name="initialSigmaZ" value="0.5"/>
+                <param name="slopeSumThresholdMultiplier" value="10.0"/>
+                <param name="matchAcceptanceThreshold" value="m10.0"/>
+                <param name="traversedDistanceThreshold" value="true"/>
+                <param name="traversedDistanceThreshold" value="10.0"/>
+                <param name="traversedDistanceThreshold" value="M_PI / 180"/>
+                <param name="globalMapLength" value="300.0"/>
+                <param name="traversedDistanceThreshold" value="1.0"/>
                       
          
         </node>
