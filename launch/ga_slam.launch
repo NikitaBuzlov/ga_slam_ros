@@ -2,7 +2,7 @@
         <env name="ROSCONSOLE_CONFIG_FILE"
        value="$(find ga_slam)/cfg/rosconsole.config"/>
      <param name="use_sim_time" value="true"/>
-    
+    <!-- try commit -->
 
      <node name="ga_slam" pkg="ga_slam"
                 type="ga_slam_node" output="screen" >
